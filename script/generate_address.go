@@ -20,8 +20,7 @@ func main() {
 		"0x97DCA899a2278d010d678d64fBC7C718eD5D4939",
 	}
 
-	bf, err := store.NewBloomFilterStore(&address.EVMAddressHandler{},
-		store.WithEstimates(uint(count+len(customAddresses)), 0.00001))
+	bf, err := store.NewBloomFilterStore(&address.EVMAddressHandler{})
 	if err != nil {
 		log.Fatal(err)
 	}
