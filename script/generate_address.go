@@ -17,7 +17,7 @@ func main() {
 	// custom addresses to add
 	customAddresses := []string{
 		"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-		"0x97DCA899a2278d010d678d64fBC7C718eD5D4939",
+		"0x9dd1C4d9Dc87dDbF4fa1721b94B7Af4F08D8A83C",
 	}
 
 	bf, err := store.NewBloomFilterStore(&address.EVMAddressHandler{},
