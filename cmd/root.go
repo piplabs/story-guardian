@@ -80,7 +80,8 @@ func startTask(ctx context.Context) {
 		downloadAndRetry(ctx)
 
 		// Retry and upload the file again after the sleep period.
-		uploadAndRetry(ctx)
+		// TODO: @stevemilk - Deal with the filtered report file
+		// uploadAndRetry(ctx)
 	}
 }
 
