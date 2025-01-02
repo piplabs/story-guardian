@@ -36,7 +36,7 @@ go mod tidy
 4. Build the application:
 
 ```shell
-go build -o story-guardian cmd/*.go
+go build -o story-guardian .
 ```
 
 5. Move the binary into your PATH or run it locally:
