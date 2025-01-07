@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
+	"github.com/piplabs/story-guardian/internal/pkg/httpclient"
 	"github.com/piplabs/story-guardian/utils/ctxutil"
 )
 
@@ -19,8 +19,8 @@ const (
 
 var (
 	accessTokenURL     = baseAPIURL + oAuthTokenPath
-	bloomFilterFileURL = baseAPIURL + bloomFilterPath
-	uploadFileURL      = baseAPIURL + uploadFilePath
+	BloomFilterFileURL = baseAPIURL + bloomFilterPath
+	UploadFileURL      = baseAPIURL + uploadFilePath
 )
 
 // oAuthTokenRequest is the payload structure for obtaining an access token.
@@ -45,7 +45,7 @@ type presignedURLResponse struct {
 }
 
 // FetchAccessToken retrieves an OAuth access token using client credentials.
-func FetchAccessToken(clientID, clientSecret string) (string, error) {
+func FetchAccessToken(ctx context.Context, clientID, clientSecret string) (string, error) {
 	requestPayload := oAuthTokenRequest{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
@@ -59,17 +59,18 @@ func FetchAccessToken(clientID, clientSecret string) (string, error) {
 		return "", err
 	}
 
+	// Use the default HTTP client from the httpclient package
+	client := httpclient.DefaultClient()
+
+	header := map[string]string{
+		httpclient.ContentTypeHeader: httpclient.ContentTypeJSON,
+	}
 	// Send POST request
-	resp, err := http.Post(accessTokenURL, "application/json", bytes.NewReader(jsonData))
+	resp, err := client.Do(ctx, http.MethodPost, accessTokenURL, bytes.NewReader(jsonData), header)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-
-	// Verify HTTP response code
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("access token request failed with status %d", resp.StatusCode)
-	}
 
 	// Decode response JSON
 	var tokenResponse oAuthTokenResponse
@@ -82,24 +83,20 @@ func FetchAccessToken(clientID, clientSecret string) (string, error) {
 
 // fetchBloomFilterPresignedURL retrieves the presigned URL for the bloom filter file.
 func fetchBloomFilterPresignedURL(ctx context.Context) (string, error) {
-	// Create HTTP GET request
-	req, err := http.NewRequest(http.MethodGet, bloomFilterFileURL, nil)
-	if err != nil {
-		return "", err
+	// Use the default HTTP client from the httpclient package
+	client := httpclient.DefaultClient()
+
+	header := map[string]string{
+		httpclient.ContentTypeHeader:   httpclient.ContentTypeJSON,
+		httpclient.AuthorizationHeader: "Bearer " + ctxutil.GetAccessToken(ctx),
 	}
-	req.Header.Add("Authorization", "Bearer "+ctxutil.GetAccessToken(ctx))
 
 	// Perform the HTTP request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(ctx, http.MethodGet, BloomFilterFileURL, nil, header)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-
-	// Verify HTTP response code
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("presigned URL request failed with status %d", resp.StatusCode)
-	}
 
 	// Decode response JSON
 	var urlResp presignedURLResponse
@@ -110,25 +107,22 @@ func fetchBloomFilterPresignedURL(ctx context.Context) (string, error) {
 	return urlResp.PresignedURL, nil
 }
 
+// uploadReportFile uploads the filtered report file to the CipherOwl server.
 func uploadReportFile(ctx context.Context, buf *bytes.Buffer, contentType string) error {
-	req, err := http.NewRequest(http.MethodPost, uploadFileURL, buf)
-	if err != nil {
-		return err
+	// Use the default HTTP client from the httpclient package
+	client := httpclient.DefaultClient()
+
+	header := map[string]string{
+		httpclient.ContentTypeHeader:   contentType,
+		httpclient.AuthorizationHeader: "Bearer " + ctxutil.GetAccessToken(ctx),
 	}
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Add("Authorization", "Bearer "+ctxutil.GetAccessToken(ctx))
 
 	// Perform the HTTP request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(ctx, http.MethodPost, UploadFileURL, buf, header)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	// Verify HTTP response code
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload request failed with status %d", resp.StatusCode)
-	}
 
 	return nil
 }

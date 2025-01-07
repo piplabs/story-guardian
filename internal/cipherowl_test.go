@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+
 	"github.com/piplabs/story-guardian/utils/ctxutil"
 )
 
@@ -15,6 +16,7 @@ func Test_FetchAccessToken(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	type args struct {
+		ctx          context.Context
 		clientID     string
 		clientSecret string
 	}
@@ -28,6 +30,7 @@ func Test_FetchAccessToken(t *testing.T) {
 		{
 			name: "successful fetch access token",
 			args: args{
+				ctx:          context.Background(),
 				clientID:     "test_client_id",
 				clientSecret: "test_client_secret",
 			},
@@ -41,6 +44,7 @@ func Test_FetchAccessToken(t *testing.T) {
 		{
 			name: "failed fetch access token",
 			args: args{
+				ctx:          context.Background(),
 				clientID:     "test_client_id",
 				clientSecret: "test_client_secret",
 			},
@@ -57,7 +61,7 @@ func Test_FetchAccessToken(t *testing.T) {
 			tt.mock()
 		}
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FetchAccessToken(tt.args.clientID, tt.args.clientSecret)
+			got, err := FetchAccessToken(tt.args.ctx, tt.args.clientID, tt.args.clientSecret)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchAccessToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -94,7 +98,7 @@ func Test_fetchBloomFilterPresignedURL(t *testing.T) {
 			want:    "test_presigned_url",
 			wantErr: false,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodGet, bloomFilterFileURL,
+				httpmock.RegisterResponder(http.MethodGet, BloomFilterFileURL,
 					httpmock.NewStringResponder(http.StatusOK, `{"presignedUrl": "test_presigned_url"}`))
 			},
 		},
@@ -106,7 +110,7 @@ func Test_fetchBloomFilterPresignedURL(t *testing.T) {
 			want:    "",
 			wantErr: true,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodGet, bloomFilterFileURL,
+				httpmock.RegisterResponder(http.MethodGet, BloomFilterFileURL,
 					httpmock.NewStringResponder(http.StatusUnauthorized, `{"error": "invalid_token"}`))
 			},
 		},
@@ -155,7 +159,7 @@ func Test_uploadReportFile(t *testing.T) {
 			},
 			wantErr: false,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodPost, uploadFileURL,
+				httpmock.RegisterResponder(http.MethodPost, UploadFileURL,
 					httpmock.NewStringResponder(http.StatusOK, `{"status": "success"}`))
 			},
 		},
@@ -168,7 +172,7 @@ func Test_uploadReportFile(t *testing.T) {
 			},
 			wantErr: true,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodPost, uploadFileURL,
+				httpmock.RegisterResponder(http.MethodPost, UploadFileURL,
 					httpmock.NewStringResponder(http.StatusBadRequest, `{"error": "invalid_request"}`))
 			},
 		},

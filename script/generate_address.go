@@ -31,11 +31,15 @@ func main() {
 			log.Fatalf("Failed to generate key: %v", err)
 		}
 		addr := crypto.PubkeyToAddress(key.PublicKey).Hex()
-		_ = bf.AddAddress(addr)
+		if err := bf.AddAddress(addr); err != nil {
+			log.Fatalf("Failed to add address %s: %v", addr, err)
+		}
 	}
 
 	for _, addr := range customAddresses {
-		_ = bf.AddAddress(addr)
+		if err := bf.AddAddress(addr); err != nil {
+			log.Fatalf("Failed to add address %s: %v", addr, err)
+		}
 	}
 
 	filePath := path.Join(utils.GetDefaultPath(), "bloom_filter.gob")

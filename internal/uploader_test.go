@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+
 	"github.com/piplabs/story-guardian/utils/ctxutil"
 )
 
@@ -40,7 +41,7 @@ func TestUploadReportFile(t *testing.T) {
 			},
 			wantErr: false,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodPost, uploadFileURL,
+				httpmock.RegisterResponder(http.MethodPost, UploadFileURL,
 					httpmock.NewStringResponder(http.StatusOK, `{"status": "success"}`))
 			},
 		},
@@ -52,7 +53,7 @@ func TestUploadReportFile(t *testing.T) {
 			},
 			wantErr: true,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodPost, uploadFileURL,
+				httpmock.RegisterResponder(http.MethodPost, UploadFileURL,
 					httpmock.NewStringResponder(http.StatusBadRequest, `{"error": "invalid_file"}`))
 			},
 		},

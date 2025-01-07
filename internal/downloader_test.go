@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+
 	"github.com/piplabs/story-guardian/utils/ctxutil"
 )
 
@@ -38,7 +39,7 @@ func TestDownloader_DownloadAndSaveBloomFilter(t *testing.T) {
 			want:    "bloom_filter_data",
 			wantErr: false,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodGet, bloomFilterFileURL,
+				httpmock.RegisterResponder(http.MethodGet, BloomFilterFileURL,
 					httpmock.NewStringResponder(http.StatusOK, `{"presignedUrl": "test_presigned_url"}`))
 
 				httpmock.RegisterResponder(http.MethodGet, "test_presigned_url",
@@ -53,7 +54,7 @@ func TestDownloader_DownloadAndSaveBloomFilter(t *testing.T) {
 			},
 			wantErr: true,
 			mock: func() {
-				httpmock.RegisterResponder(http.MethodGet, bloomFilterFileURL,
+				httpmock.RegisterResponder(http.MethodGet, BloomFilterFileURL,
 					httpmock.NewStringResponder(http.StatusOK, `{"presignedUrl": "test_presigned_url"}`))
 
 				httpmock.RegisterResponder(http.MethodGet, "test_presigned_url",
