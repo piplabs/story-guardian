@@ -2,11 +2,12 @@ package internal
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/piplabs/story-guardian/internal/pkg/httpclient"
 )
 
 const (
@@ -28,16 +29,14 @@ func DownloadAndSaveBloomFilter(ctx context.Context, outputDir string) error {
 		return err
 	}
 
-	// Download file using the presigned URL
-	resp, err := http.Get(presignedURL)
+	// Use the default HTTP client from the httpclient package
+	client := httpclient.DefaultClient()
+
+	resp, err := client.Do(ctx, http.MethodGet, presignedURL, nil, nil)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download failed with status %d", resp.StatusCode)
-	}
 
 	// Save file to output directory
 	filePath := filepath.Join(outputDir, bloomFilterFilename)

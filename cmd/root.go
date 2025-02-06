@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -27,6 +28,7 @@ const (
 
 // Global variable to hold the output directory.
 var outputDir string
+var filteredReportFilePath = filepath.Join(utils.GetDefaultPath(), filteredReportFileName)
 
 // rootCmd is the root command for the Story Guardian.
 var rootCmd = &cobra.Command{
@@ -41,13 +43,17 @@ var rootCmd = &cobra.Command{
 func Init() {
 	// Register the output directory flag and bind it with Viper.
 	rootCmd.PersistentFlags().StringVarP(&outputDir, "output-dir", "o", utils.GetDefaultPath(), "Directory to store the bloom filter file")
-	viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output-dir"))
+	if err := viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output-dir")); err != nil {
+		log.Fatalf("failed to bind output flag with viper, err: %v", err)
+	}
 
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatalf("failed to initialize configuration: %v", err)
 	}
 	rootCmd.SetContext(ctxutil.WithAppConfig(context.Background(), conf))
+
+	log.Println("Configuration initialized successfully.")
 }
 
 // Execute is the main entry point to start the Cobra CLI.
@@ -65,15 +71,24 @@ func startTask(ctx context.Context) {
 		nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 		sleepDuration := nextMidnight.Sub(now)
 
-		// Sleep until next midnight to start the next download.
-		time.Sleep(sleepDuration)
+		// Create a timer to wait until next midnight or until the context is done.
+		timer := time.NewTimer(sleepDuration)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			log.Println("startTask: received context cancellation, shutting down.")
+			return
+		case <-timer.C:
+			// Continue with the task execution below.
+		}
 
 		conf := ctxutil.GetAppConfig(ctx)
-		accessToken, err := internal.FetchAccessToken(conf.ClientID, conf.ClientSecret)
+		accessToken, err := internal.FetchAccessToken(ctx, conf.ClientID, conf.ClientSecret)
 		if err != nil {
 			log.Printf("failed to fetch access token: %v", err)
 			continue
 		}
+		// Add the fetched access token into the context
 		ctx = ctxutil.WithAccessToken(ctx, accessToken)
 
 		// Retry and download the file again after the sleep period.
@@ -97,6 +112,14 @@ func downloadAndRetry(ctx context.Context) {
 		},
 		retry.Delay(retryDelay),
 		retry.Attempts(retryAttempts),
+		retry.RetryIf(func(err error) bool {
+			// Check for context-related errors
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				log.Printf("Context-related error occurred: %v, will not retry", err)
+				return false
+			}
+			return true
+		}),
 	)
 	if err != nil {
 		log.Printf("Failed to download bloom filter after retries: %v", err)
@@ -110,14 +133,21 @@ func uploadAndRetry(ctx context.Context) {
 	err := retry.Do(
 		func() error {
 			// Attempt to upload bloom filter
-			filePath := filepath.Join(utils.GetDefaultPath(), filteredReportFileName)
-			if err := internal.UploadReportFile(ctx, filePath); err != nil {
+			if err := internal.UploadReportFile(ctx, filteredReportFilePath); err != nil {
 				return fmt.Errorf("upload failed: %w", err)
 			}
 			return nil
 		},
 		retry.Delay(retryDelay),
 		retry.Attempts(retryAttempts),
+		retry.RetryIf(func(err error) bool {
+			// Check for context-related errors
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				log.Printf("Context-related error occurred: %v, will not retry", err)
+				return false
+			}
+			return true
+		}),
 	)
 	if err != nil {
 		log.Printf("Failed to upload report file after retries: %v", err)
